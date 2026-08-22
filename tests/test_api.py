@@ -1,8 +1,57 @@
-from fastapi.testclient import TestClient
+from collections.abc import Generator
 
+from fastapi.testclient import TestClient
+from pydantic_settings import BaseSettings, SettingsConfigDict
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from opspilot.database import Base, get_db
 from opspilot.main import app
+from opspilot.settings import settings
+
+
+class PytestSettings(BaseSettings):
+    test_database_url: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env.test",
+        env_file_encoding="utf-8",
+    )
+
+
+test_settings = PytestSettings()
+
+test_engine = create_engine(test_settings.test_database_url)
+
+TestSessionLocal = sessionmaker(
+    bind=test_engine,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+
+def override_get_db() -> Generator[Session, None, None]:
+    db = TestSessionLocal()
+    
+    try:
+        yield db
+    finally:
+        db.close()
+        
+app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def reset_database() -> Generator[None, None, None]:
+    Base.metadata.drop_all(bind=test_engine)
+    Base.metadata.create_all(bind=test_engine)
+    
+    yield
+    
+    Base.metadata.drop_all(bind=test_engine)
 
 
 def test_health() -> None:
@@ -31,3 +80,35 @@ def test_create_incident() -> None:
     assert body["severity"] == "HIGH"
     assert body["status"] == "OPEN"
     assert body["id"] == 1
+    
+    
+def test_get_incident() -> None:
+    create_response = client.post(
+        "/incidents",
+        json={
+            "title": "Checkout API unavailable",
+            "description": "Customers receive HTTP 500 errors",
+            "severity": "HIGH",
+        },
+    )
+    
+    incident_id = create_response.json()["id"]
+
+    response = client.get(f"/incidents/{incident_id}")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == incident_id
+    assert body["title"] == "Checkout API unavailable"
+    assert body["status"] == "OPEN"
+    
+    
+def test_get_incident_not_found() -> None:
+    response = client.get("/incidents/999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Incident not found"
+    }
