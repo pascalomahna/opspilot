@@ -26,15 +26,15 @@ jobs:
                     --health-retries 5
 
         env:
-            DATABASE_URL: postgresql://opspilot_ci:ci_only_password@localhost:5432/opspilot_test
-            TEST_DATABASE_URL: postgresql://opspilot_ci:ci_only_password@localhost:5432/opspilot_test
+            DATABASE_URL: postgresql+psycopg://opspilot_ci:ci_only_password@localhost:5432/opspilot_test
+            TEST_DATABASE_URL: postgresql+psycopg://opspilot_ci:ci_only_password@localhost:5432/opspilot_test
 
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Install uv
-              uses: astral-sh/setup-uv@v6
+              uses: astral-sh/setup-uv@v9
 
             - name: Install Python
               run: uv python install 3.14
