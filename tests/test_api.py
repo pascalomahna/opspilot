@@ -19,7 +19,7 @@ class PytestSettings(BaseSettings):
     )
 
 
-test_settings = PytestSettings()
+test_settings = PytestSettings()  # type: ignore[call-arg]
 
 test_engine = create_engine(test_settings.test_database_url)
 

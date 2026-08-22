@@ -25,6 +25,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "httpx2>=2.10.0",
+    "mypy>=2.3.1",
     "pytest>=9.1.1",
     "ruff>=0.16.4",
 ]

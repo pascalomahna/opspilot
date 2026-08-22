@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from opspilot.database import get_db
 from opspilot.db_models import IncidentDB
-from opspilot.models import Incident, IncidentCreate, IncidentStatus
+from opspilot.models import Incident, IncidentCreate, IncidentStatus, Severity
 
 router = APIRouter(
     prefix="/incidents",
@@ -25,8 +25,8 @@ def get_incidents(db: DbSession) -> list[Incident]:
             id=incident.id,
             title=incident.title,
             description=incident.description,
-            severity=incident.severity,
-            status=incident.status,
+            severity=Severity(incident.severity),
+            status=IncidentStatus(incident.status),
         )
         for incident in result
     ]
@@ -52,8 +52,8 @@ def create_incident(
         id=incident.id,
         title=incident.title,
         description=incident.description,
-        severity=incident.severity,
-        status=incident.status,
+        severity=Severity(incident.severity),
+        status=IncidentStatus(incident.status),
     )
 
 
@@ -74,6 +74,6 @@ def get_incident(
         id=incident.id,
         title=incident.title,
         description=incident.description,
-        severity=incident.severity,
-        status=incident.status,
+        severity=Severity(incident.severity),
+        status=IncidentStatus(incident.status),
     )
