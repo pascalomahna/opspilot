@@ -14,14 +14,14 @@ class IncidentStatus(StrEnum):
     OPEN = "OPEN"
     IN_PROGRESS = "IN_PROGRESS"
     RESOLVED = "RESOLVED"
-    
+
 
 class IncidentCreate(BaseModel):
     title: str
     description: str
     severity: Severity
-    
-    
+
+
 class Incident(IncidentCreate):
     id: int
     status: IncidentStatus

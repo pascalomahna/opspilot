@@ -26,6 +26,7 @@ build-backend = "uv_build"
 dev = [
     "httpx2>=2.10.0",
     "pytest>=9.1.1",
+    "ruff>=0.16.4",
 ]
 migrations = [
     "alembic>=1.19.1",

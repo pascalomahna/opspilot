@@ -8,21 +8,18 @@ from opspilot.database import get_db
 from opspilot.db_models import IncidentDB
 from opspilot.models import Incident, IncidentCreate, IncidentStatus
 
-
 router = APIRouter(
     prefix="/incidents",
     tags=["incidents"],
 )
 
-DbSession = Annotated[Session, Depends(get_db)] 
+DbSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("")
 def get_incidents(db: DbSession) -> list[Incident]:
-    result = db.scalars(
-        select(IncidentDB).order_by(IncidentDB.id)
-    )
-    
+    result = db.scalars(select(IncidentDB).order_by(IncidentDB.id))
+
     return [
         Incident(
             id=incident.id,
@@ -37,20 +34,20 @@ def get_incidents(db: DbSession) -> list[Incident]:
 
 @router.post("", status_code=201)
 def create_incident(
-    data: IncidentCreate, 
+    data: IncidentCreate,
     db: DbSession,
 ) -> Incident:
     incident = IncidentDB(
         title=data.title,
         description=data.description,
         severity=data.severity.value,
-        status=IncidentStatus.OPEN.value
+        status=IncidentStatus.OPEN.value,
     )
-    
+
     db.add(incident)
     db.commit()
     db.refresh(incident)
-    
+
     return Incident(
         id=incident.id,
         title=incident.title,
@@ -62,17 +59,17 @@ def create_incident(
 
 @router.get("/{incident_id}")
 def get_incident(
-    incident_id: int, 
+    incident_id: int,
     db: DbSession,
 ) -> Incident:
     incident = db.get(IncidentDB, incident_id)
-    
+
     if incident is None:
         raise HTTPException(
             status_code=404,
             detail="Incident not found",
         )
-    
+
     return Incident(
         id=incident.id,
         title=incident.title,
