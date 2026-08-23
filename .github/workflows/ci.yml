@@ -116,3 +116,26 @@ jobs:
 
             - name: Build migrations image
               run: docker build --target migrations -t opspilot-migrations:test .
+            
+  container-security:
+        name: Container Security
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - name: Build API image
+              run: docker build --target api -t opspilot-api:ci .
+
+            - name: Scan API image with Trivy
+              run: |
+                docker run --rm \
+                  -v /var/run/docker.sock:/var/run/docker.sock \
+                  aquasec/trivy:0.74.0 \ 
+                  image \
+                  --scanners vuln \
+                  --severity HIGH,CRITICAL \
+                  --ignore-unfixed \
+                  --exit-code 1 \
+                  opspilot-api:ci
