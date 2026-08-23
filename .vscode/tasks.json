@@ -10,6 +10,18 @@
                 "isDefault": true
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Container Security Check",
+            "type": "shell",
+            "command": "./scripts/check-container.sh",
+            "problemMatcher": []
+        },
+        {
+            "label": "All Checks",
+            "type": "shell",
+            "command": "./scripts/check-all.sh",
+            "problemMatcher": []
         }
     ]
 }
