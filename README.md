@@ -1,129 +1,163 @@
 # OpsPilot
 
-OpsPilot is a learning-oriented incident management platform designed to explore modern software engineering, DevOps, cloud-native technologies, observability, security, and AI-assisted operations in a realistic end-to-end project.
+OpsPilot is an AI-assisted incident and operations platform built as a hands-on Cloud, DevOps, and AI engineering project.
 
-The project is developed iteratively. New technologies are introduced only when there is a concrete architectural or operational reason to use them.
+The platform currently provides a REST API for managing incidents. Over time, it will evolve into an operations platform capable of investigating incidents using logs, metrics, deployments, runbooks, and AI-assisted reasoning.
 
-## Current Scope
+The project is intentionally developed incrementally, starting with a small modular application and introducing additional infrastructure and architectural complexity only when it provides a clear benefit.
 
-The current version provides a small REST API for managing incidents.
+---
 
-Implemented capabilities:
+## Current Status
 
-* Health endpoint
-* Create incidents
-* List incidents
-* Retrieve individual incidents
-* PostgreSQL persistence
-* Database schema migrations
-* Automated API tests
-* Containerized application and database
-* Automatic database migration during container startup
-* Dedicated test database
-* Docker health checks
+OpsPilot currently provides:
 
-Future iterations will extend the platform with additional services, CI/CD, Kubernetes, GitOps, observability, security, cloud infrastructure, and AI-assisted incident analysis.
+- FastAPI-based REST API
+- PostgreSQL persistence
+- Incident creation and retrieval
+- Database migrations with Alembic
+- Dockerized application and database
+- Multi-stage production container builds
+- Automated integration tests
+- Static code quality checks
+- Dependency vulnerability scanning
+- Container vulnerability scanning
+- GitHub Actions CI pipeline
+
+The project is under active development.
+
+---
 
 ## Architecture
 
-The current local architecture consists of three Docker Compose services:
+OpsPilot currently follows a **modular monolith** architecture.
 
-```text
-                    Client
-                      |
-                      | HTTP :8000
-                      ▼
-                OpsPilot API
-             FastAPI + Uvicorn
-                      |
-                      | PostgreSQL
-                      ▼
-                  PostgreSQL
-                      |
-                      ▼
-                 Docker Volume
+This keeps the system simple while the domain is still evolving. Services may be separated later when there is a concrete operational or architectural reason to do so.
 
+```mermaid
+flowchart LR
+    Client[API Client]
 
-Before the API starts:
+    subgraph OpsPilot
+        API[FastAPI]
+        Incidents[Incident API]
+        Persistence[SQLAlchemy]
+    end
 
-PostgreSQL
-    |
-    ▼
-Health Check
-    |
-    ▼
-Migration Service
-  Alembic upgrade
-    |
-    ▼
-OpsPilot API
+    PostgreSQL[(PostgreSQL)]
+    Alembic[Alembic Migrations]
+
+    Client --> API
+    API --> Incidents
+    Incidents --> Persistence
+    Persistence --> PostgreSQL
+    Alembic --> PostgreSQL
 ```
 
-### Services
+The architecture will evolve as additional capabilities such as observability, authentication, event processing, and AI-assisted incident investigation are introduced.
 
-#### `api`
+---
 
-Runs the OpsPilot FastAPI application.
+## Data Model
 
-Responsibilities:
+The current domain contains a single main entity: `Incident`.
 
-* Expose the REST API
-* Validate incoming requests
-* Execute application logic
-* Access PostgreSQL through SQLAlchemy
+```mermaid
+erDiagram
+    INCIDENT {
+        int id PK
+        string title
+        text description
+        string severity
+        string status
+        datetime created_at
+    }
+```
 
-#### `postgres`
+### Incident Severity
 
-Runs the local PostgreSQL database.
+Supported severity values:
 
-Database data is stored in a Docker named volume and therefore survives container recreation.
+- `LOW`
+- `MEDIUM`
+- `HIGH`
+- `CRITICAL`
 
-#### `migrate`
+### Incident Status
 
-Runs Alembic database migrations before the API starts.
+Supported status values:
 
-The container is expected to terminate successfully after all migrations have been applied.
+- `OPEN`
+- `IN_PROGRESS`
+- `RESOLVED`
+
+The data model will later be extended with entities such as applications, deployments, investigations, runbooks, and operational signals.
+
+---
 
 ## Technology Stack
 
 ### Application
 
-* Python 3.14
-* FastAPI
-* Pydantic
-* Pydantic Settings
-* Uvicorn
+- Python 3.14
+- FastAPI
+- Pydantic
+- SQLAlchemy
+- Psycopg
+- Uvicorn
 
-### Persistence
+### Database
 
-* PostgreSQL 18
-* SQLAlchemy 2
-* Psycopg 3
-* Alembic
+- PostgreSQL 18
+- Alembic
 
-### Testing
+### Development Tooling
 
-* pytest
-* FastAPI TestClient
-* Dedicyted PostgreSQL test database
+- uv
+- pytest
+- Ruff
+- mypy
+- Bandit
+- pip-audit
 
-### Development and Runtime
+### Containerization and Security
 
-* uv
-* Docker
-* Docker Compose
-* WSL2 / Linux
+- Docker
+- Docker Compose
+- Trivy
+
+### CI
+
+- GitHub Actions
+
+---
 
 ## Project Structure
 
 ```text
 opspilot/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+├── .vscode/
+│   ├── launch.json
+│   ├── settings.json
+│   └── tasks.json
+│
 ├── alembic/
-│   └── versions/
+│   ├── versions/
+│   ├── env.py
+│   └── script.py.mako
 │
 ├── docker/
 │   └── postgres/
 │       └── init-test-db.sql
+│
+├── scripts/
+│   ├── check.sh
+│   ├── check-all.sh
+│   └── check-container.sh
 │
 ├── src/
 │   └── opspilot/
@@ -147,101 +181,110 @@ opspilot/
 ├── compose.yaml
 ├── Dockerfile
 ├── pyproject.toml
+├── README.md
 └── uv.lock
 ```
 
+---
+
 ## Prerequisites
 
-The following tools are required:
+The local development environment requires:
 
-* Git
-* Docker with Docker Compose
-* Python 3.14
-* uv
+- Docker
+- Docker Compose
+- Python 3.14
+- uv
 
-The project is currently developed using WSL2 with Ubuntu and Docker Desktop.
+Verify the installation:
+
+```bash
+docker --version
+docker compose version
+uv --version
+```
+
+---
 
 ## Configuration
 
-OpsPilot uses environment variables for application and database configuration.
+OpsPilot uses environment files for local configuration.
 
-Create the local configuration files from the provided examples:
+Create the local application configuration from the example:
 
 ```bash
 cp .env.example .env
+```
+
+Create the test configuration:
+
+```bash
 cp .env.test.example .env.test
 ```
 
-Adjust the values if required.
+The real environment files are intentionally excluded from Git.
 
-Real environment files are intentionally excluded from Git.
+Do not commit credentials or secrets.
 
-### Application configuration
-
-`.env` contains the local application and Docker Compose configuration.
-
-Example:
-
-```text
-POSTGRES_DB=opspilot
-POSTGRES_USER=your-local-user
-POSTGRES_PASSWORD=your-local-password
-
-DATABASE_URL=postgresql+psycopg://your-local-user:your-local-password@localhost:5432/opspilot
-DATABASE_URL_DOCKER=postgresql+psycopg://your-local-user:your-local-password@postgres:5432/opspilot
-```
-
-The two database URLs differ because applications running directly on the development host access PostgreSQL through `localhost`, while containers inside the Docker Compose network use the service name `postgres`.
-
-### Test configuration
-
-`.env.test` contains configurations exclusively used by automated tests.
-
-Example:
-
-```text
-TEST_DATABASE_URL=postgresql+psycopg://your-local-user:your-local-password@localhost:5432/opspilot_test
-```
+---
 
 ## Running OpsPilot
 
-Build and start the complete application:
+Build and start the complete local environment:
 
 ```bash
 docker compose up -d --build
 ```
 
-Check the status:
+Check the current state:
 
 ```bash
-docker compose ps -a
+docker compose ps
 ```
 
-A healthy environment should show:
-
-```text
-postgres   running / healthy
-migrate    exited successfully
-api        running / healthy
-```
-
-The migration container terminating with exit code `0` is expected behavior.
-
-## API
-
-The API is available locally at:
+The API is available at:
 
 ```text
 http://localhost:8000
 ```
 
-### Health Check
+FastAPI documentation:
 
-```bash
-curl http://localhost:8000/health
+```text
+http://localhost:8000/docs
 ```
 
-Expected response:
+Alternative ReDoc documentation:
+
+```text
+http://localhost:8000/redoc
+```
+
+Stop the environment:
+
+```bash
+docker compose down
+```
+
+To remove the PostgreSQL volume as well:
+
+```bash
+docker compose down -v
+```
+
+> Removing the volume permanently deletes the local database data.
+
+---
+
+## API
+
+### Health
+
+```http
+GET /health
+```
+
+Example response:
 
 ```json
 {
@@ -249,189 +292,454 @@ Expected response:
 }
 ```
 
-### List Incidents
-
-```bash
-curl http://localhost:8000/incidents
-```
-
 ### Create Incident
 
-```bash
-curl -X POST http://localhost:8000/incidents \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Database latency high",
-    "description": "PostgreSQL response times increased",
-    "severity": "HIGH"
-  }'
+```http
+POST /incidents
 ```
 
-### Retrieve Incident
+Example request:
 
-```bash
-curl http://localhost:8000/incidents/1
+```json
+{
+  "title": "Database unavailable",
+  "description": "The application cannot connect to PostgreSQL.",
+  "severity": "CRITICAL"
+}
 ```
 
-## API Documentation
+### List Incidents
 
-FastAPI automatically generates an OpenAPI specification and interactive API documentation.
-
-Swagger UI:
-
-```text
-http://localhost:8000/docs
+```http
+GET /incidents
 ```
 
-## Running Tests
+### Get Incident
 
-The PostgreSQL container must be running because the current integration tests use a dedicated PostgreSQL test database.
-
-Run:
-
-```bash
-uv run pytest
+```http
+GET /incidents/{incident_id}
 ```
 
-The test database is created automatically when PostgreSQL initializes a fresh Docker volume.
+Unknown incident IDs return HTTP `404`.
 
-Each test starts with an isolated database schema to avoid dependencies between tests.
+---
 
 ## Database Migrations
 
-Database schema changes are managed through Alembic.
+Database schema changes are managed using Alembic.
 
-Check the currently applied migration:
+The migration container automatically applies migrations when the Docker Compose environment starts.
 
-```bash
-uv run alembic current
-```
-
-View migration history:
+To inspect the current migration state locally:
 
 ```bash
-uv run alembic history
+uv run --group migrations alembic current
 ```
 
-Create a migration after changing SQLAlchemy models:
+Create a new migration:
 
 ```bash
-uv run alembic revision --autogenerate -m "describe change"
+uv run --group migrations alembic revision --autogenerate -m "describe migration"
 ```
 
-Review generated migrations before applying them.
-
-Apply all pending migrations:
+Apply migrations:
 
 ```bash
-uv run alembic upgrade head
+uv run --group migrations alembic upgrade head
 ```
 
-When running through Docker Compose, migrations are applied automatically by the `migrate` service before the API starts.
+Migration files are stored under:
 
-## Resetting the Local Environment
-
-Stop and remove the containers:
-
-```bash
-docker compose down
+```text
+alembic/versions/
 ```
 
-Remove containers **and all local database data**:
+Database schema changes should always be represented by migrations instead of manually modifying production schemas.
 
-```bash
-docker compose down -v
+---
+
+## Testing
+
+The current automated API tests are **integration tests**.
+
+They exercise the request flow across multiple components:
+
+```mermaid
+flowchart LR
+    Test[pytest / FastAPI TestClient]
+    API[FastAPI]
+    ORM[SQLAlchemy]
+    DB[(PostgreSQL Test Database)]
+
+    Test --> API
+    API --> ORM
+    ORM --> DB
 ```
 
-After removing the volume, the next startup creates a fresh PostgreSQL instance, initializes the application and test databases, and applies all Alembic migrations.
+This verifies the integration between:
 
-```bash
-docker compose up -d --build
-```
+- HTTP request handling
+- FastAPI routing
+- request and response validation
+- application logic
+- SQLAlchemy
+- PostgreSQL
 
-> `docker compose down -v` permanently deletes the local PostgreSQL data stored in the Docker volume.
+Current scenarios include:
 
-## Development Without the API Container
+- health endpoint
+- incident creation
+- incident retrieval
+- handling unknown incident IDs
 
-The FastAPI application can also be run directly inside the development environment while PostgreSQL continues to run through Docker Compose.
-
-Start PostgreSQL:
+Start PostgreSQL before running the test suite:
 
 ```bash
 docker compose up -d postgres
 ```
 
-Start the API:
+Then execute:
 
 ```bash
-uv run uvicorn opspilot.main:app --reload
+uv run pytest
 ```
 
-The local `.env` configuration uses `localhost:5432` for this development mode.
+Unit tests will be introduced as business logic is extracted into dedicated domain or service components that can be tested independently from infrastructure.
+
+A future test structure may look like:
+
+```text
+tests/
+├── unit/
+├── integration/
+└── e2e/
+```
+
+---
+
+## Code Quality
+
+Run the standard local quality checks:
+
+```bash
+./scripts/check.sh
+```
+
+The check includes:
+
+1. Ruff linting
+2. Ruff formatting validation
+3. mypy type checking
+4. Bandit security analysis
+5. pytest integration tests
+6. pip-audit dependency vulnerability scanning
+
+The script stops immediately if one check fails.
+
+---
+
+## Container Security
+
+The production container image can be built and scanned locally using:
+
+```bash
+./scripts/check-container.sh
+```
+
+The script:
+
+1. builds the production API image
+2. scans the resulting image with Trivy
+3. checks for fixable `HIGH` and `CRITICAL` vulnerabilities
+4. fails if such a vulnerability is detected
+
+Run all local checks together:
+
+```bash
+./scripts/check-all.sh
+```
+
+The checks are also available as project-specific VS Code tasks.
+
+---
+
+## Container Architecture
+
+OpsPilot uses a multi-stage Docker build to separate build tooling from the production runtime.
+
+```mermaid
+flowchart TD
+    Builder["builder<br/>Python + uv + build tooling"]
+    RuntimeBase["runtime-base<br/>Python + application environment"]
+    API["api<br/>Uvicorn runtime"]
+
+    MigrationsBuilder["migrations-builder<br/>Alembic dependencies"]
+    Migrations["migrations<br/>Alembic runtime"]
+
+    Builder -->|"copy .venv + application"| RuntimeBase
+    RuntimeBase --> API
+
+    Builder --> MigrationsBuilder
+    RuntimeBase --> Migrations
+    MigrationsBuilder -->|"copy migration environment"| Migrations
+```
+
+The production API image is intentionally kept minimal.
+
+It:
+
+- runs as a non-root user
+- does not contain `uv`
+- does not contain `pip`
+- contains only runtime dependencies
+- uses a dedicated virtual environment
+- is scanned for known vulnerabilities
+
+Build tooling remains in intermediate Docker stages and is not included in the final runtime image.
+
+---
+
+## Continuous Integration
+
+GitHub Actions automatically validates changes on pushes to `main` and pull requests.
+
+The CI pipeline currently contains separate jobs for:
+
+### Quality
+
+- Ruff linting
+- Ruff formatting validation
+- mypy
+- Bandit
+
+### Tests
+
+- PostgreSQL test service
+- API integration tests with pytest
+
+### Dependency Audit
+
+- pip-audit
+
+### Docker Build
+
+- API image build
+- migration image build
+
+### Container Security
+
+- production API image build
+- Trivy vulnerability scan
+- CI failure for fixable `HIGH` or `CRITICAL` vulnerabilities
+
+```mermaid
+flowchart LR
+    Commit[Push / Pull Request]
+
+    Commit --> Quality[Quality]
+    Commit --> Tests[Integration Tests]
+    Commit --> Audit[Dependency Audit]
+    Commit --> Build[Docker Build]
+    Commit --> Security[Container Security]
+
+    Quality --> Result[CI Result]
+    Tests --> Result
+    Audit --> Result
+    Build --> Result
+    Security --> Result
+```
+
+The jobs intentionally run independently to keep responsibilities clearly separated.
+
+---
 
 ## Security Principles
 
-The project currently follows several basic security practices:
+The project follows several basic security principles from the beginning:
 
-* Secrets are not stored in source code.
-* `.env` files are excluded from Git and Docker build contexts.
-* Docker containers run the application as a non-root user.
-* PostgreSQL readiness is checked before migrations are executed.
-* Application readiness is monitored through a health endpoint.
-* Read-only mounts are used where write access is unnecessary.
-* Components receive only the configuration they require.
+- no secrets committed to Git
+- environment-specific configuration
+- non-root containers
+- minimal runtime images
+- dependency vulnerability scanning
+- container vulnerability scanning
+- static security analysis
+- reproducible dependency resolution through `uv.lock`
+- automated security checks in CI
 
-These controls will be expanded in later project iterations.
+Additional controls will be introduced as the platform evolves.
+
+---
 
 ## Development Principles
 
-OpsPilot is intentionally built incrementally.
+OpsPilot is built around several engineering principles:
 
-The project follows several guiding principles:
+### Keep the architecture simple
 
-* Understand concepts before introducing abstractions.
-* Prefer reproducible environments.
-* Build once and deploy consistently.
-* Separate application configuration from source code.
-* Apply least privilege.
-* Automate repeatable tasks.
-* Keep tests isolated.
-* Review generated infrastructure and database changes.
-* Introduce technology only when it solves a concrete problem.
+Start with a modular monolith and introduce distributed components only when justified.
+
+### Automate quality early
+
+Formatting, linting, type checking, tests, and security checks should be automated rather than relying on manual discipline.
+
+### Build once, deploy consistently
+
+Container images should become immutable deployment artifacts.
+
+Future environments will promote the same artifact through:
+
+```text
+dev → test → production
+```
+
+instead of rebuilding the application for every environment.
+
+### Infrastructure as Code
+
+Cloud infrastructure will be managed declaratively rather than manually.
+
+### Security by design
+
+Security checks should be part of normal development and CI/CD workflows instead of being added shortly before production.
+
+---
 
 ## Roadmap
 
-Planned future topics include:
+The project will evolve incrementally.
 
-* GitHub Actions CI
-* Automated linting and formatting
-* Static analysis and security scanning
-* Container registry and image versioning
-* Additional incident workflows
-* Users, applications, and authorization
-* OAuth 2.0 / OpenID Connect
-* Kubernetes
-* Helm
-* Kustomize
-* Argo CD and GitOps
-* Terraform / OpenTofu
-* Microsoft Azure
-* Prometheus
-* Grafana
-* Loki and OpenTelemetry
-* Event-driven architecture
-* Messaging with Kafka or NATS
-* Secrets management
-* TLS and certificate management
-* Policy enforcement
-* Supply-chain security
-* RAG
-* MCP
-* Agentic AI
-* AI observability and token/cost management
+Planned areas include:
 
-## Status
+### Application Architecture
 
-OpsPilot is currently an educational engineering project under active development.
+- service and domain layers
+- repository abstraction where useful
+- additional operational entities
+- improved test separation
 
-The current focus is establishing a solid application, persistence, testing, and container foundation before moving into CI/CD and cloud-native orchestration.
+### Cloud
+
+- Microsoft Azure
+- Azure Container Registry
+- Azure Kubernetes Service
+- managed PostgreSQL
+- Azure Key Vault
+- workload identities
+
+### Infrastructure as Code
+
+- Terraform / OpenTofu
+- environment separation
+- reusable infrastructure modules
+
+### Kubernetes
+
+- Kubernetes deployments
+- Services
+- ConfigMaps
+- Secrets
+- health probes
+- resource management
+- Helm
+- Kustomize
+- GitOps with Argo CD
+
+### Observability
+
+- Prometheus
+- Grafana
+- centralized logging
+- OpenTelemetry
+- tracing
+- dashboards
+- alerts
+- SLOs
+
+### Security
+
+- authentication with OIDC / OAuth2
+- role-based access control
+- secret management
+- TLS
+- container and dependency scanning
+- SBOM generation
+- policy enforcement
+- image signing and software supply-chain controls
+
+### Event-Driven Architecture
+
+Introduce asynchronous messaging if operational requirements justify it.
+
+Possible technologies include:
+
+- Kafka
+- NATS
+- RabbitMQ
+
+### AI-assisted Operations
+
+OpsPilot will eventually support an AI operations agent capable of using operational context such as:
+
+- incidents
+- logs
+- metrics
+- traces
+- deployments
+- runbooks
+
+Potential capabilities include:
+
+- incident investigation
+- root-cause suggestions
+- Retrieval-Augmented Generation
+- tool access using MCP
+- remediation recommendations
+- human-approved operational actions
+- AI cost and token observability
+
+AI functionality will be introduced only after the underlying operational platform provides the required data and interfaces.
+
+---
+
+## Long-Term Vision
+
+The long-term goal is to evolve OpsPilot from a simple incident API into an AI-assisted operations platform.
+
+A future investigation flow may look like:
+
+```mermaid
+flowchart LR
+    Incident[Incident]
+    Agent[OpsPilot AI Agent]
+
+    Logs[Logs]
+    Metrics[Metrics]
+    Traces[Traces]
+    Deployments[Deployments]
+    Runbooks[Runbooks]
+
+    Analysis[Investigation]
+    Recommendation[Recommended Action]
+    Human[Human Approval]
+
+    Incident --> Agent
+
+    Logs --> Agent
+    Metrics --> Agent
+    Traces --> Agent
+    Deployments --> Agent
+    Runbooks --> Agent
+
+    Agent --> Analysis
+    Analysis --> Recommendation
+    Recommendation --> Human
+```
+
+Operational actions that can affect production systems should remain subject to explicit authorization and appropriate human approval.
+
+---
+
+## License
+
+No license has been selected yet.
