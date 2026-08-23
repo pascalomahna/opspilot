@@ -34,3 +34,6 @@ dev = [
 migrations = [
     "alembic>=1.19.1",
 ]
+
+[tool.mypy]
+mypy_path = "src"
