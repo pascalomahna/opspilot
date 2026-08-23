@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import StrEnum
 
 from pydantic import BaseModel
@@ -25,3 +26,4 @@ class IncidentCreate(BaseModel):
 class Incident(IncidentCreate):
     id: int
     status: IncidentStatus
+    created_at: datetime

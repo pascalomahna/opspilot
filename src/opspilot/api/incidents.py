@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from opspilot.database import get_db
 from opspilot.db_models import IncidentDB
 from opspilot.models import Incident, IncidentCreate, IncidentStatus, Severity
+from opspilot.services import incidents as incident_service
 
 router = APIRouter(
     prefix="/incidents",
@@ -16,64 +16,43 @@ router = APIRouter(
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-@router.get("")
-def get_incidents(db: DbSession) -> list[Incident]:
-    result = db.scalars(select(IncidentDB).order_by(IncidentDB.id))
-
-    return [
-        Incident(
-            id=incident.id,
-            title=incident.title,
-            description=incident.description,
-            severity=Severity(incident.severity),
-            status=IncidentStatus(incident.status),
-        )
-        for incident in result
-    ]
+def to_incident(db_incident: IncidentDB) -> Incident:
+    return Incident(
+        id=db_incident.id,
+        title=db_incident.title,
+        description=db_incident.description,
+        severity=Severity(db_incident.severity),
+        status=IncidentStatus(db_incident.status),
+        created_at=db_incident.created_at,
+    )
 
 
-@router.post("", status_code=201)
+@router.get("", response_model=list[Incident])
+def list_incidents(db: DbSession) -> list[Incident]:
+    incidents = incident_service.list_incidents(db)
+    return [to_incident(incident) for incident in incidents]
+
+
+@router.post("", response_model=Incident, status_code=status.HTTP_201_CREATED)
 def create_incident(
-    data: IncidentCreate,
+    incident: IncidentCreate,
     db: DbSession,
 ) -> Incident:
-    incident = IncidentDB(
-        title=data.title,
-        description=data.description,
-        severity=data.severity.value,
-        status=IncidentStatus.OPEN.value,
-    )
-
-    db.add(incident)
-    db.commit()
-    db.refresh(incident)
-
-    return Incident(
-        id=incident.id,
-        title=incident.title,
-        description=incident.description,
-        severity=Severity(incident.severity),
-        status=IncidentStatus(incident.status),
-    )
+    db_incident = incident_service.create_incident(incident, db)
+    return to_incident(db_incident)
 
 
-@router.get("/{incident_id}")
+@router.get("/{incident_id}", response_model=Incident)
 def get_incident(
     incident_id: int,
     db: DbSession,
 ) -> Incident:
-    incident = db.get(IncidentDB, incident_id)
+    db_incident = incident_service.get_incident(incident_id, db)
 
-    if incident is None:
+    if db_incident is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Incident not found",
         )
 
-    return Incident(
-        id=incident.id,
-        title=incident.title,
-        description=incident.description,
-        severity=Severity(incident.severity),
-        status=IncidentStatus(incident.status),
-    )
+    return to_incident(db_incident)
