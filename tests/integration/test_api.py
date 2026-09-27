@@ -82,7 +82,7 @@ def test_create_incident() -> None:
     assert body["id"] == 1
 
 
-def test_update_incident_status() -> None:
+def test_update_incident() -> None:
     create_response = client.post(
         "/incidents",
         json={
@@ -109,7 +109,7 @@ def test_update_incident_status() -> None:
     assert body["status"] == "IN_PROGRESS"
 
 
-def test_update_incident_status_returns_404_when_incident_does_not_exist() -> None:
+def test_update_incident_returns_404_when_incident_does_not_exist() -> None:
     response = client.patch(
         "/incidents/999999",
         json={
@@ -121,7 +121,7 @@ def test_update_incident_status_returns_404_when_incident_does_not_exist() -> No
     assert response.json()["detail"] == "Incident not found"
 
 
-def test_update_incident_status_rejects_invalid_status() -> None:
+def test_update_incident_rejects_invalid_status() -> None:
     create_response = client.post(
         "/incidents",
         json={
@@ -299,3 +299,127 @@ def test_list_incidents_without_filters_returns_all_incidents() -> None:
         first["id"],
         second["id"],
     }
+
+
+def test_create_application() -> None:
+    response = client.post(
+        "/applications",
+        json={
+            "name": "Payments API",
+        },
+    )
+
+    assert response.status_code == 201
+
+    body = response.json()
+
+    assert body["name"] == "Payments API"
+    assert "id" in body
+
+
+def test_list_applications() -> None:
+    first = client.post(
+        "/applications",
+        json={
+            "name": "Payments API",
+        },
+    ).json()
+
+    second = client.post(
+        "/applications",
+        json={
+            "name": "Customer Portal",
+        },
+    ).json()
+
+    response = client.get("/applications")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert len(body) == 2
+    assert {application["id"] for application in body} == {
+        first["id"],
+        second["id"],
+    }
+
+
+def test_get_application() -> None:
+    created = client.post(
+        "/applications",
+        json={
+            "name": "Payments API",
+        },
+    ).json()
+
+    response = client.get(
+        f"/applications/{created['id']}",
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == created["id"]
+    assert body["name"] == "Payments API"
+
+
+def test_get_application_returns_404_when_not_found() -> None:
+    response = client.get("/applications/999999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+def test_assign_application_to_incident() -> None:
+    application = client.post(
+        "/applications",
+        json={
+            "name": "Payments API",
+        },
+    ).json()
+
+    incident = client.post(
+        "/incidents",
+        json={
+            "title": "Payment failures",
+            "description": "Payments are failing.",
+            "severity": "CRITICAL",
+        },
+    ).json()
+
+    response = client.patch(
+        f"/incidents/{incident['id']}",
+        json={
+            "application_id": application["id"],
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == incident["id"]
+    assert body["application_id"] == application["id"]
+
+
+def test_assign_non_existing_application_returns_404() -> None:
+    incident = client.post(
+        "/incidents",
+        json={
+            "title": "Payment failures",
+            "description": "Payments are failing.",
+            "severity": "HIGH",
+        },
+    ).json()
+
+    response = client.patch(
+        f"/incidents/{incident['id']}",
+        json={
+            "application_id": 999999,
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"

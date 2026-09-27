@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from opspilot.api.applications import router as applications_router
 from opspilot.api.incidents import router as incidents_router
 
 app = FastAPI(
@@ -8,6 +9,7 @@ app = FastAPI(
 )
 
 app.include_router(incidents_router)
+app.include_router(applications_router)
 
 
 @app.get("/health", tags=["health"])

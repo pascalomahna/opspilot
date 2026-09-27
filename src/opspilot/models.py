@@ -24,10 +24,20 @@ class IncidentCreate(BaseModel):
 
 
 class IncidentUpdate(BaseModel):
-    status: IncidentStatus
+    status: IncidentStatus | None = None
+    application_id: int | None = None
 
 
 class Incident(IncidentCreate):
     id: int
     status: IncidentStatus
     created_at: datetime
+    application_id: int | None = None
+
+
+class ApplicationCreate(BaseModel):
+    name: str
+
+
+class Application(ApplicationCreate):
+    id: int
