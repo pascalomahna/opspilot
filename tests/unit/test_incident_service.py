@@ -3,11 +3,12 @@ from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 
 from opspilot.db_models import IncidentDB
-from opspilot.models import IncidentCreate, Severity
+from opspilot.models import IncidentCreate, IncidentStatus, IncidentUpdate, Severity
 from opspilot.services.incidents import (
     create_incident,
     get_incident,
     list_incidents,
+    update_incident_status,
 )
 
 
@@ -29,6 +30,47 @@ def test_create_incident_persists_incident() -> None:
     assert result.title == incident.title
     assert result.description == incident.description
     assert result.severity == Severity.CRITICAL.value
+
+
+def test_update_incident_status_persists_change() -> None:
+    db = MagicMock(spec=Session)
+
+    incident = IncidentDB(
+        title="API unavailable",
+        description="The API is not responding.",
+        severity=Severity.HIGH.value,
+        status=IncidentStatus.OPEN.value,
+    )
+
+    db.get.return_value = incident
+
+    update = IncidentUpdate(
+        status=IncidentStatus.IN_PROGRESS,
+    )
+
+    result = update_incident_status(42, update, db)
+
+    db.get.assert_called_once_with(IncidentDB, 42)
+    db.commit.assert_called_once()
+    db.refresh.assert_called_once_with(incident)
+
+    assert result is incident
+    assert incident.status == IncidentStatus.IN_PROGRESS.value
+
+
+def test_update_incident_status_returns_none_when_not_found() -> None:
+    db = MagicMock(spec=Session)
+    db.get.return_value = None
+
+    update = IncidentUpdate(status=IncidentStatus.RESOLVED)
+
+    result = update_incident_status(999, update, db)
+
+    db.get.assert_called_once_with(IncidentDB, 999)
+    db.commit.assert_not_called()
+    db.refresh.assert_not_called()
+
+    assert result is None
 
 
 def test_get_incident_returns_incident() -> None:

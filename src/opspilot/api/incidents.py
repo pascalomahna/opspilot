@@ -5,7 +5,13 @@ from sqlalchemy.orm import Session
 
 from opspilot.database import get_db
 from opspilot.db_models import IncidentDB
-from opspilot.models import Incident, IncidentCreate, IncidentStatus, Severity
+from opspilot.models import (
+    Incident,
+    IncidentCreate,
+    IncidentStatus,
+    IncidentUpdate,
+    Severity,
+)
 from opspilot.services import incidents as incident_service
 
 router = APIRouter(
@@ -39,6 +45,27 @@ def create_incident(
     db: DbSession,
 ) -> Incident:
     db_incident = incident_service.create_incident(incident, db)
+    return to_incident(db_incident)
+
+
+@router.patch("/{incident_id}", response_model=Incident)
+def update_incident_status(
+    incident_id: int,
+    update: IncidentUpdate,
+    db: DbSession,
+) -> Incident:
+    db_incident = incident_service.update_incident_status(
+        incident_id,
+        update,
+        db,
+    )
+
+    if db_incident is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incident not found",
+        )
+
     return to_incident(db_incident)
 
 

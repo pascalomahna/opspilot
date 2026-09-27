@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opspilot.db_models import IncidentDB
-from opspilot.models import IncidentCreate
+from opspilot.models import IncidentCreate, IncidentUpdate
 
 
 def list_incidents(db: Session) -> list[IncidentDB]:
@@ -24,6 +24,24 @@ def create_incident(
     db.refresh(db_incident)
 
     return db_incident
+
+
+def update_incident_status(
+    incident_id: int,
+    update: IncidentUpdate,
+    db: Session,
+) -> IncidentDB | None:
+    incident = db.get(IncidentDB, incident_id)
+
+    if incident is None:
+        return None
+
+    incident.status = update.status.value
+
+    db.commit()
+    db.refresh(incident)
+
+    return incident
 
 
 def get_incident(

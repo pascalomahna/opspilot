@@ -23,6 +23,10 @@ class IncidentCreate(BaseModel):
     severity: Severity
 
 
+class IncidentUpdate(BaseModel):
+    status: IncidentStatus
+
+
 class Incident(IncidentCreate):
     id: int
     status: IncidentStatus

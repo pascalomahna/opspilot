@@ -82,6 +82,67 @@ def test_create_incident() -> None:
     assert body["id"] == 1
 
 
+def test_update_incident_status() -> None:
+    create_response = client.post(
+        "/incidents",
+        json={
+            "title": "Database unavailable",
+            "description": "PostgreSQL cannot be reached.",
+            "severity": "CRITICAL",
+        },
+    )
+
+    incident_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/incidents/{incident_id}",
+        json={
+            "status": "IN_PROGRESS",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == incident_id
+    assert body["status"] == "IN_PROGRESS"
+
+
+def test_update_incident_status_returns_404_when_incident_does_not_exist() -> None:
+    response = client.patch(
+        "/incidents/999999",
+        json={
+            "status": "RESOLVED",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Incident not found"
+
+
+def test_update_incident_status_rejects_invalid_status() -> None:
+    create_response = client.post(
+        "/incidents",
+        json={
+            "title": "Database unavailable",
+            "description": "PostgreSQL cannot be reached.",
+            "severity": "HIGH",
+        },
+    )
+
+    incident_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/incidents/{incident_id}",
+        json={
+            "status": "BROKEN",
+        },
+    )
+
+    assert response.status_code == 422
+
+
 def test_get_incident() -> None:
     create_response = client.post(
         "/incidents",
