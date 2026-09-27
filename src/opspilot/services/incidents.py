@@ -2,11 +2,23 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from opspilot.db_models import IncidentDB
-from opspilot.models import IncidentCreate, IncidentUpdate
+from opspilot.models import IncidentCreate, IncidentStatus, IncidentUpdate, Severity
 
 
-def list_incidents(db: Session) -> list[IncidentDB]:
-    return list(db.scalars(select(IncidentDB)).all())
+def list_incidents(
+    db: Session,
+    status: IncidentStatus | None = None,
+    severity: Severity | None = None,
+) -> list[IncidentDB]:
+    query = select(IncidentDB)
+
+    if status is not None:
+        query = query.where(IncidentDB.status == status.value)
+
+    if severity is not None:
+        query = query.where(IncidentDB.severity == severity.value)
+
+    return list(db.scalars(query).all())
 
 
 def create_incident(

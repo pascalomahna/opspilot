@@ -123,3 +123,28 @@ def test_list_incidents_returns_all_incidents() -> None:
     db.scalars.return_value.all.assert_called_once_with()
 
     assert result == incidents
+
+
+def test_list_incidents_applies_status_and_severity_filters() -> None:
+    db = MagicMock(spec=Session)
+    db.scalars.return_value.all.return_value = []
+
+    result = list_incidents(
+        db,
+        status=IncidentStatus.OPEN,
+        severity=Severity.CRITICAL,
+    )
+
+    assert result == []
+    db.scalars.assert_called_once()
+
+    query = db.scalars.call_args.args[0]
+
+    sql = str(
+        query.compile(
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    assert "incidents.status = 'OPEN'" in sql
+    assert "incidents.severity = 'CRITICAL'" in sql
