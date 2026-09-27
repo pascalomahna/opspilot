@@ -171,3 +171,131 @@ def test_get_incident_not_found() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Incident not found"}
+
+
+def test_list_incidents_filters_by_status_and_severity() -> None:
+    first = client.post(
+        "/incidents",
+        json={
+            "title": "Critical open incident",
+            "description": "First incident",
+            "severity": "CRITICAL",
+        },
+    ).json()
+
+    client.post(
+        "/incidents",
+        json={
+            "title": "High open incident",
+            "description": "Second incident",
+            "severity": "HIGH",
+        },
+    ).json()
+
+    third = client.post(
+        "/incidents",
+        json={
+            "title": "Critical resolved incident",
+            "description": "Third incident",
+            "severity": "CRITICAL",
+        },
+    ).json()
+
+    client.patch(
+        f"/incidents/{third['id']}",
+        json={
+            "status": "RESOLVED",
+        },
+    )
+
+    response = client.get(
+        "/incidents",
+        params={
+            "status": "OPEN",
+            "severity": "CRITICAL",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert len(body) == 1
+    assert body[0]["id"] == first["id"]
+
+
+def test_list_incidents_filters_by_severity() -> None:
+    client.post(
+        "/incidents",
+        json={
+            "title": "Critical incident",
+            "description": "Critical",
+            "severity": "CRITICAL",
+        },
+    )
+
+    client.post(
+        "/incidents",
+        json={
+            "title": "Low incident",
+            "description": "Low",
+            "severity": "LOW",
+        },
+    )
+
+    response = client.get(
+        "/incidents",
+        params={
+            "severity": "CRITICAL",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert len(body) == 1
+    assert body[0]["severity"] == "CRITICAL"
+
+
+def test_list_incidents_rejects_invalid_filter_value() -> None:
+    response = client.get(
+        "/incidents",
+        params={
+            "status": "BROKEN",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_list_incidents_without_filters_returns_all_incidents() -> None:
+    first = client.post(
+        "/incidents",
+        json={
+            "title": "First incident",
+            "description": "First description",
+            "severity": "HIGH",
+        },
+    ).json()
+
+    second = client.post(
+        "/incidents",
+        json={
+            "title": "Second incident",
+            "description": "Second description",
+            "severity": "LOW",
+        },
+    ).json()
+
+    response = client.get("/incidents")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert len(body) == 2
+    assert {incident["id"] for incident in body} == {
+        first["id"],
+        second["id"],
+    }

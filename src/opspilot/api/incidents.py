@@ -34,8 +34,17 @@ def to_incident(db_incident: IncidentDB) -> Incident:
 
 
 @router.get("", response_model=list[Incident])
-def list_incidents(db: DbSession) -> list[Incident]:
-    incidents = incident_service.list_incidents(db)
+def list_incidents(
+    db: DbSession,
+    status: IncidentStatus | None = None,
+    severity: Severity | None = None,
+) -> list[Incident]:
+    incidents = incident_service.list_incidents(
+        db,
+        status=status,
+        severity=severity,
+    )
+
     return [to_incident(incident) for incident in incidents]
 
 
