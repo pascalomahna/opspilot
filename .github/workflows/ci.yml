@@ -12,7 +12,7 @@ env:
 jobs:
   quality:
         name: Quality
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
 
         steps:
             - name: Checkout repository
@@ -42,7 +42,7 @@ jobs:
               run: uv run bandit -r src
   test:
         name: Tests
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
 
         services:
             postgres:
@@ -83,7 +83,7 @@ jobs:
     
   dependency-audit:
         name: Dependency Audit
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
 
         steps:
             - name: Checkout repository
@@ -105,7 +105,7 @@ jobs:
             
   docker-build:
         name: Docker Build
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
 
         steps:
             - name: Checkout repository
@@ -119,7 +119,7 @@ jobs:
             
   container-security:
         name: Container Security
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
 
         steps:
             - name: Checkout repository
