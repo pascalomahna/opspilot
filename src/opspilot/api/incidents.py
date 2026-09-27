@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from opspilot.database import get_db
 from opspilot.db_models import IncidentDB
+from opspilot.exceptions import ApplicationNotFoundError
 from opspilot.models import (
     Incident,
     IncidentCreate,
@@ -30,6 +31,7 @@ def to_incident(db_incident: IncidentDB) -> Incident:
         severity=Severity(db_incident.severity),
         status=IncidentStatus(db_incident.status),
         created_at=db_incident.created_at,
+        application_id=db_incident.application_id,
     )
 
 
@@ -58,16 +60,22 @@ def create_incident(
 
 
 @router.patch("/{incident_id}", response_model=Incident)
-def update_incident_status(
+def update_incident(
     incident_id: int,
     update: IncidentUpdate,
     db: DbSession,
 ) -> Incident:
-    db_incident = incident_service.update_incident_status(
-        incident_id,
-        update,
-        db,
-    )
+    try:
+        db_incident = incident_service.update_incident(
+            incident_id,
+            update,
+            db,
+        )
+    except ApplicationNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found",
+        ) from error
 
     if db_incident is None:
         raise HTTPException(

@@ -1,14 +1,16 @@
 from unittest.mock import MagicMock
 
+import pytest
 from sqlalchemy.orm import Session
 
-from opspilot.db_models import IncidentDB
+from opspilot.db_models import ApplicationDB, IncidentDB
+from opspilot.exceptions import ApplicationNotFoundError
 from opspilot.models import IncidentCreate, IncidentStatus, IncidentUpdate, Severity
 from opspilot.services.incidents import (
     create_incident,
     get_incident,
     list_incidents,
-    update_incident_status,
+    update_incident,
 )
 
 
@@ -32,7 +34,7 @@ def test_create_incident_persists_incident() -> None:
     assert result.severity == Severity.CRITICAL.value
 
 
-def test_update_incident_status_persists_change() -> None:
+def test_update_incident_persists_change() -> None:
     db = MagicMock(spec=Session)
 
     incident = IncidentDB(
@@ -48,7 +50,7 @@ def test_update_incident_status_persists_change() -> None:
         status=IncidentStatus.IN_PROGRESS,
     )
 
-    result = update_incident_status(42, update, db)
+    result = update_incident(42, update, db)
 
     db.get.assert_called_once_with(IncidentDB, 42)
     db.commit.assert_called_once()
@@ -58,19 +60,72 @@ def test_update_incident_status_persists_change() -> None:
     assert incident.status == IncidentStatus.IN_PROGRESS.value
 
 
-def test_update_incident_status_returns_none_when_not_found() -> None:
+def test_update_incident_returns_none_when_not_found() -> None:
     db = MagicMock(spec=Session)
     db.get.return_value = None
 
     update = IncidentUpdate(status=IncidentStatus.RESOLVED)
 
-    result = update_incident_status(999, update, db)
+    result = update_incident(999, update, db)
 
     db.get.assert_called_once_with(IncidentDB, 999)
     db.commit.assert_not_called()
     db.refresh.assert_not_called()
 
     assert result is None
+
+
+def test_update_incident_assigns_application() -> None:
+    db = MagicMock(spec=Session)
+
+    incident = IncidentDB(
+        title="API unavailable",
+        description="The API is not responding.",
+        severity=Severity.HIGH.value,
+        status=IncidentStatus.OPEN.value,
+    )
+
+    application = ApplicationDB(
+        name="Payments API",
+    )
+    application.id = 7
+
+    db.get.side_effect = [incident, application]
+
+    update = IncidentUpdate(
+        application_id=7,
+    )
+
+    result = update_incident(42, update, db)
+
+    assert result is incident
+    assert incident.application_id == 7
+
+    assert db.get.call_count == 2
+    db.commit.assert_called_once()
+    db.refresh.assert_called_once_with(incident)
+
+
+def test_update_incident_raises_when_application_does_not_exist() -> None:
+    db = MagicMock(spec=Session)
+
+    incident = IncidentDB(
+        title="API unavailable",
+        description="The API is not responding.",
+        severity=Severity.HIGH.value,
+        status=IncidentStatus.OPEN.value,
+    )
+
+    db.get.side_effect = [incident, None]
+
+    update = IncidentUpdate(
+        application_id=999,
+    )
+
+    with pytest.raises(ApplicationNotFoundError):
+        update_incident(42, update, db)
+
+    db.commit.assert_not_called()
 
 
 def test_get_incident_returns_incident() -> None:

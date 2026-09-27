@@ -1,9 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from opspilot.database import Base
+
+
+class ApplicationDB(Base):
+    __tablename__ = "applications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
 
 
 class IncidentDB(Base):
@@ -20,4 +27,9 @@ class IncidentDB(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+
+    application_id: Mapped[int | None] = mapped_column(
+        ForeignKey("applications.id"),
+        nullable=True,
     )

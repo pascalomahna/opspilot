@@ -1,7 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from opspilot.db_models import IncidentDB
+from opspilot.db_models import ApplicationDB, IncidentDB
+from opspilot.exceptions import ApplicationNotFoundError
 from opspilot.models import IncidentCreate, IncidentStatus, IncidentUpdate, Severity
 
 
@@ -38,7 +39,7 @@ def create_incident(
     return db_incident
 
 
-def update_incident_status(
+def update_incident(
     incident_id: int,
     update: IncidentUpdate,
     db: Session,
@@ -48,7 +49,16 @@ def update_incident_status(
     if incident is None:
         return None
 
-    incident.status = update.status.value
+    if update.status is not None:
+        incident.status = update.status.value
+
+    if update.application_id is not None:
+        application = db.get(ApplicationDB, update.application_id)
+
+        if application is None:
+            raise ApplicationNotFoundError
+
+        incident.application_id = application.id
 
     db.commit()
     db.refresh(incident)
